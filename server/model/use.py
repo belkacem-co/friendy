@@ -52,10 +52,11 @@ def generate_response(user_input, lang):
 
     :param user_input: the user's message
     :param lang: the language chosen by the user
-    :return:
+    :return: an object containing the response and the recommended prepositions
     """
     # LOAD NECESSARY DATA
     data = json.loads(open(f'model/data/database_{lang}.json').read())
+    groups = json.loads(open(f'model/data/groups_{lang}.json').read())
     words = pickle.load(open(f'model/output/words_{lang}.pkl', 'rb'))
     classes = pickle.load(open(f'model/output/classes_{lang}.pkl', 'rb'))
     # LOAD MODEL
@@ -63,8 +64,25 @@ def generate_response(user_input, lang):
     # PREDICT CLASS
     predictions = predict_class(user_input, model, words, classes)
     response = 'Error'
+    code = ''
     for item in data:
         if item['tag'] == predictions[0]['class']:
             response = random.choice(item['responses'])
+            code = item['code']
             break
-    return response
+
+    group = None
+    for item in groups:
+        if item['code'] == code:
+            group = item
+
+    next_contexts = []
+    for item in groups:
+        if group:
+            if item['code'] in group['to']:
+                next_contexts.append(item)
+
+    return {
+        'response': response,
+        'propositions': list(map(lambda x: x['proposition'], next_contexts))
+    }
